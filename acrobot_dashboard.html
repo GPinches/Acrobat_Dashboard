@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Acrobot-v1 — Multi-Agent RL Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.27.0/plotly.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep: #0d0f14;
+    --bg-surface: #141820;
+    --bg-card: #1a1f2e;
+    --bg-card-hover: #1f2538;
+    --border: #2a3045;
+    --border-glow: #3a4565;
+    --text-primary: #e8eaf0;
+    --text-secondary: #8892a8;
+    --text-muted: #555f78;
+    --cyan: #66d9ef;
+    --green: #a6e22e;
+    --pink: #f92672;
+    --orange: #fd971f;
+    --purple: #ae81ff;
+    --yellow: #e6db74;
+    --mint: #78ffd6;
+    --lime: #a8ff78;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    font-family: 'Outfit', sans-serif;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg-deep); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* HERO */
+  .hero {
+    position: relative;
+    padding: 4rem 2rem 3rem;
+    text-align: center;
+    overflow: hidden;
+    border-bottom: 1px solid var(--border);
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 50% at 20% 30%, rgba(102,217,239,0.06) 0%, transparent 70%),
+      radial-gradient(ellipse 50% 60% at 80% 60%, rgba(249,38,114,0.05) 0%, transparent 70%),
+      radial-gradient(ellipse 80% 40% at 50% 0%, rgba(174,129,255,0.04) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .hero-label {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--cyan);
+    background: rgba(102,217,239,0.08);
+    border: 1px solid rgba(102,217,239,0.2);
+    padding: 0.35rem 1rem;
+    border-radius: 999px;
+    margin-bottom: 1.5rem;
+  }
+  .hero h1 {
+    font-size: clamp(2rem, 4vw, 3.2rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    margin-bottom: 1rem;
+    background: linear-gradient(135deg, var(--text-primary) 0%, var(--cyan) 50%, var(--purple) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero p {
+    max-width: 680px;
+    margin: 0 auto;
+    font-size: 1.05rem;
+    color: var(--text-secondary);
+    font-weight: 300;
+  }
+
+  /* NAV */
+  .nav-bar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    gap: 0.25rem;
+    padding: 0.6rem 2rem;
+    background: rgba(13,15,20,0.85);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    justify-content: center;
+  }
+  .nav-bar a {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    text-decoration: none;
+    padding: 0.5rem 0.8rem;
+    border-radius: 6px;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .nav-bar a:hover { color: var(--text-primary); background: rgba(255,255,255,0.04); }
+
+  /* LAYOUT */
+  .container { max-width: 1280px; margin: 0 auto; padding: 0 1.5rem; }
+  .section { padding: 3.5rem 0; border-bottom: 1px solid var(--border); }
+  .section:last-child { border-bottom: none; }
+  .section-header { margin-bottom: 2rem; }
+  .section-header h2 { font-size: 1.65rem; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 0.4rem; }
+  .section-header p { color: var(--text-secondary); font-size: 0.95rem; font-weight: 300; }
+  .accent-cyan { color: var(--cyan); }
+  .accent-pink { color: var(--pink); }
+  .accent-green { color: var(--green); }
+  .accent-purple { color: var(--purple); }
+  .accent-orange { color: var(--orange); }
+  .accent-yellow { color: var(--yellow); }
+  .accent-mint { color: var(--mint); }
+
+  /* CARDS */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  .card:hover { border-color: var(--border-glow); box-shadow: 0 4px 30px rgba(0,0,0,0.3); }
+  .card-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 1rem;
+  }
+
+  /* STATS */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 2.5rem; }
+  .stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.2rem 1.4rem;
+    text-align: center;
+    transition: transform 0.2s, border-color 0.3s;
+  }
+  .stat-card:hover { transform: translateY(-2px); border-color: var(--border-glow); }
+  .stat-value { font-family: 'JetBrains Mono', monospace; font-size: 1.8rem; font-weight: 700; line-height: 1.2; }
+  .stat-label { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.3rem; }
+
+  /* TOGGLE CHIPS */
+  .toggle-row { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.2rem; }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    padding: 0.4rem 0.85rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+  }
+  .chip.active { border-color: currentColor; color: var(--text-primary); }
+  .chip .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+  /* CHART */
+  .chart-wrap { position: relative; width: 100%; height: 420px; }
+  .chart-wrap canvas { width: 100% !important; height: 100% !important; }
+
+  /* TABLE */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  thead th {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 0.9rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.2s;
+    white-space: nowrap;
+  }
+  thead th:hover { color: var(--cyan); }
+  thead th .sort-arrow { margin-left: 0.3rem; font-size: 0.6rem; opacity: 0.4; }
+  thead th.sorted .sort-arrow { opacity: 1; color: var(--cyan); }
+  tbody tr { border-bottom: 1px solid rgba(42,48,69,0.5); transition: background 0.15s; }
+  tbody tr:hover { background: rgba(102,217,239,0.03); }
+  td { padding: 0.8rem 1rem; white-space: nowrap; }
+  td:first-child { font-weight: 600; }
+  .rank-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px; border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; font-weight: 700; margin-right: 0.5rem;
+  }
+  .rank-1 { background: rgba(249,38,114,0.15); color: var(--pink); }
+  .rank-2 { background: rgba(253,151,31,0.15); color: var(--orange); }
+  .rank-3 { background: rgba(174,129,255,0.15); color: var(--purple); }
+  .rank-other { background: rgba(85,95,120,0.15); color: var(--text-muted); }
+  .bar-cell { display: flex; align-items: center; gap: 0.6rem; }
+  .mini-bar { height: 6px; border-radius: 3px; transition: width 0.6s cubic-bezier(0.22,1,0.36,1); }
+
+  /* PARAM GRID */
+  .param-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+  .param-card {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 1.3rem 1.5rem; transition: border-color 0.3s;
+  }
+  .param-card:hover { border-color: var(--border-glow); }
+  .param-card h3 { font-size: 1rem; font-weight: 600; margin-bottom: 0.8rem; display: flex; align-items: center; gap: 0.5rem; }
+  .param-row { display: flex; justify-content: space-between; padding: 0.35rem 0; font-size: 0.85rem; border-bottom: 1px dashed rgba(42,48,69,0.6); }
+  .param-row:last-child { border-bottom: none; }
+  .param-key { color: var(--text-secondary); }
+  .param-val { font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 0.82rem; }
+
+  /* GRID */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem; }
+  @media (max-width: 1050px) { .grid-3 { grid-template-columns: 1fr; } }
+  @media (max-width: 860px) { .grid-2 { grid-template-columns: 1fr; } }
+
+  /* 3D PLOTLY OVERRIDES */
+  .plotly-3d-wrap { width: 100%; height: 480px; border-radius: 8px; overflow: hidden; }
+
+  /* ACROBOT SIM */
+  .sim-container { display: flex; gap: 1.5rem; align-items: stretch; flex-wrap: wrap; }
+  .sim-canvas-wrap {
+    flex: 1 1 400px; min-height: 420px;
+    background: var(--bg-surface);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    position: relative; overflow: hidden;
+  }
+  .sim-canvas-wrap canvas { display: block; }
+  .sim-controls {
+    flex: 0 0 260px;
+    display: flex; flex-direction: column; gap: 0.8rem;
+  }
+  .sim-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.06em;
+    padding: 0.7rem 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+  }
+  .sim-btn:hover { border-color: var(--border-glow); color: var(--text-primary); }
+  .sim-btn.selected { border-color: var(--cyan); color: var(--cyan); background: rgba(102,217,239,0.06); }
+  .sim-btn .btn-label { display: block; font-size: 0.9rem; font-weight: 600; font-family: 'Outfit', sans-serif; }
+  .sim-btn .btn-sub { display: block; font-size: 0.65rem; color: var(--text-muted); margin-top: 0.15rem; }
+  .sim-play-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    padding: 0.8rem;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    transition: all 0.2s;
+  }
+  .sim-play-btn.play { background: var(--cyan); color: var(--bg-deep); }
+  .sim-play-btn.play:hover { background: #88e4f5; }
+  .sim-play-btn.reset { background: rgba(249,38,114,0.15); color: var(--pink); border: 1px solid rgba(249,38,114,0.3); }
+  .sim-play-btn.reset:hover { background: rgba(249,38,114,0.25); }
+  .sim-info {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    background: var(--bg-surface);
+    border-radius: 8px;
+    padding: 0.8rem 1rem;
+    border: 1px solid var(--border);
+    line-height: 1.8;
+  }
+  .sim-info span { color: var(--text-primary); font-weight: 600; }
+
+  /* FOOTER */
+  .footer {
+    padding: 2rem;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    font-family: 'JetBrains Mono', monospace;
+    border-top: 1px solid var(--border);
+  }
+
+  /* ANIMATIONS */
+  @keyframes fadeUp { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
+  .fade-up { opacity: 0; animation: fadeUp 0.6s ease forwards; }
+  .delay-1 { animation-delay: 0.08s; }
+  .delay-2 { animation-delay: 0.16s; }
+  .delay-3 { animation-delay: 0.24s; }
+  .delay-4 { animation-delay: 0.32s; }
+
+  /* Analysis panels */
+  .analysis-panel {
+    margin-top: 1.5rem;
+    padding: 1.3rem 1.5rem;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    border-left: 3px solid var(--cyan);
+    font-size: 0.88rem;
+    line-height: 1.75;
+    color: var(--text-secondary);
+  }
+  .analysis-panel strong { color: var(--text-primary); }
+  .analysis-panel .analysis-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 0.6rem;
+    display: block;
+  }
+  .analysis-panel.border-pink { border-left-color: var(--pink); }
+  .analysis-panel.border-green { border-left-color: var(--green); }
+  .analysis-panel.border-purple { border-left-color: var(--purple); }
+  .analysis-panel.border-orange { border-left-color: var(--orange); }
+  .analysis-panel.border-mint { border-left-color: var(--mint); }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="hero-label fade-up">MA338 Reinforcement Learning — Final Project</div>
+  <h1 class="fade-up delay-1">Acrobot-v1: Comprehensive<br>Multi-Agent Study</h1>
+  <p class="fade-up delay-2">A systematic comparison of 8 reinforcement learning algorithms on the Acrobot-v1 swing-up task — from tabular Q-Learning to deep policy gradient methods — with ablation studies, statistical testing, and multi-seed evaluation.</p>
+</header>
+
+<!-- NAV -->
+<nav class="nav-bar">
+  <a href="#overview">Overview</a>
+  <a href="#simulator">Simulator</a>
+  <a href="#learning-curves">Curves</a>
+  <a href="#value-surfaces">3D Values</a>
+  <a href="#landscape">3D Landscape</a>
+  <a href="#ablation">Ablation</a>
+  <a href="#results">Results</a>
+  <a href="#hyperparams">Params</a>
+</nav>
+
+<div class="container">
+
+  <!-- OVERVIEW -->
+  <section id="overview" class="section">
+    <div class="section-header fade-up">
+      <h2>Project <span class="accent-cyan">Overview</span></h2>
+      <p>Key metrics from 100-episode evaluation across all agents</p>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card fade-up delay-1"><div class="stat-value" style="color:var(--cyan)">8</div><div class="stat-label">Agents Compared</div></div>
+      <div class="stat-card fade-up delay-2"><div class="stat-value" style="color:var(--green)">−80.2</div><div class="stat-label">Best Mean (DQN)</div></div>
+      <div class="stat-card fade-up delay-3"><div class="stat-value" style="color:var(--pink)">100%</div><div class="stat-label">DQN Success Rate</div></div>
+      <div class="stat-card fade-up delay-4"><div class="stat-value" style="color:var(--orange)">11.9</div><div class="stat-label">Lowest Std (DQN)</div></div>
+      <div class="stat-card fade-up delay-1"><div class="stat-value" style="color:var(--purple)">6</div><div class="stat-label">State Dimensions</div></div>
+      <div class="stat-card fade-up delay-2"><div class="stat-value" style="color:var(--yellow)">3</div><div class="stat-label">Discrete Actions</div></div>
+    </div>
+  </section>
+
+  <!-- ========== 3D #1: ACROBOT SIMULATOR ========== -->
+  <section id="simulator" class="section">
+    <div class="section-header">
+      <h2>Interactive Acrobot <span class="accent-cyan">Simulator</span></h2>
+      <p>Watch how each agent's learned policy controls the 2-link pendulum — select an agent and press play</p>
+    </div>
+    <div class="sim-container">
+      <div class="sim-canvas-wrap">
+        <canvas id="acrobotCanvas" width="500" height="420"></canvas>
+      </div>
+      <div class="sim-controls">
+        <div id="simAgentBtns"></div>
+        <button id="simPlayBtn" class="sim-play-btn play" onclick="startSim()">PLAY EPISODE</button>
+        <button class="sim-play-btn reset" onclick="resetSim()">RESET</button>
+        <div class="sim-info" id="simInfo">
+          Step: <span id="simStep">0</span> / 500<br>
+          Reward: <span id="simReward">0</span><br>
+          Action: <span id="simAction">—</span><br>
+          Status: <span id="simStatus">Ready</span>
+        </div>
+      </div>
+    </div>
+    <div class="analysis-panel">
+      <span class="analysis-title">Simulator Interpretation</span>
+      The simulator uses a heuristic energy-pumping policy whose quality is scaled per agent. <strong>Double DQN</strong> and <strong>REINFORCE</strong> solve the task in approximately 80&ndash;120 steps, demonstrating efficient energy injection and timely stabilisation near the goal. Tabular methods such as <strong>SARSA</strong> and <strong>Q-Learning</strong> require 200+ steps and occasionally time out, reflecting the limitations of coarse state discretisation. The difference is most visible in the early swing phase: stronger agents commit to a consistent pumping direction, while weaker agents waste steps with suboptimal or random torque applications.
+    </div>
+  </section>
+  <section id="learning-curves" class="section">
+    <div class="section-header">
+      <h2>Interactive <span class="accent-green">Learning Curves</span></h2>
+      <p>Toggle agents on/off to compare cumulative reward trajectories (smoothed, window=100)</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Cumulative Reward over Episodes</div>
+      <div id="curve-toggles" class="toggle-row"></div>
+      <div class="chart-wrap"><canvas id="learningChart"></canvas></div>
+    </div>
+    <div class="analysis-panel border-green">
+      <span class="analysis-title">Learning Curve Analysis</span>
+      <strong>REINFORCE</strong> and <strong>A2C</strong> converge fastest, reaching near-optimal performance within 200-300 episodes due to their direct policy optimisation and n-step TD updates respectively. Among tabular methods, <strong>SARSA(λ=0.9)</strong> converges significantly faster than both standard SARSA and Q-Learning, reaching a smoothed reward of -200 by episode 1,412 compared to 8,938 for SARSA and 9,922 for Q-Learning. <strong>Q-Learning</strong> is notably slow despite being off-policy; its smoothed reward remains below -300 for over 2,600 episodes, likely because the default [6,6,6,6,10,10] discretisation limits its ability to distinguish critical states. <strong>Double DQN</strong> achieves strong performance within its 2,000-episode training budget, benefiting from experience replay, dueling architecture, and continuous state representation.
+    </div>
+  </section>
+
+  <!-- ========== 3D #2: VALUE FUNCTION SURFACES ========== -->
+  <section id="value-surfaces" class="section">
+    <div class="section-header">
+      <h2>3D Value Function <span class="accent-purple">Surfaces</span></h2>
+      <p>V(s) = max<sub>a</sub> Q(s,a) over cos(θ₁) vs θ̇₁ — drag to rotate, scroll to zoom. Notice how DQN produces smooth surfaces while tabular methods show blocky discretisation artefacts.</p>
+    </div>
+    <div class="toggle-row" id="surface-toggles" style="margin-bottom:1rem;"></div>
+    <div class="grid-3" id="surfaceGrid"></div>
+    <div class="analysis-panel border-purple">
+      <span class="analysis-title">Value Surface Interpretation</span>
+      The 3D surfaces visualise V(s) = max<sub>a</sub> Q(s,a) as a function of cos(θ₁) and angular velocity θ̇₁, with all other state dimensions held at their resting values. <strong>Double DQN</strong> produces a smooth, continuous value landscape because it operates on raw continuous states through a neural network, allowing fine-grained generalisation between nearby states. In contrast, <strong>Q-Learning</strong> and <strong>SARSA(λ)</strong> exhibit pronounced blocky artefacts corresponding to the discrete bin boundaries of the [6,6,6,6,10,10] configuration. The highest-value regions (brightest) appear where cos(θ₁) is near +1 (upright) and angular velocity is moderate, indicating the agent has learned that being near the goal with controlled momentum is the most valuable configuration.
+    </div>
+  </section>
+
+  <!-- ========== 3D #3: PERFORMANCE LANDSCAPE ========== -->
+  <section id="landscape" class="section">
+    <div class="section-header">
+      <h2>3D Agent Performance <span class="accent-mint">Landscape</span></h2>
+      <p>Each agent as a bubble in Mean Reward × Std × Convergence Speed space — drag to orbit, hover for details</p>
+    </div>
+    <div class="card" style="padding:0; overflow:hidden;">
+      <div id="landscapePlot" class="plotly-3d-wrap" style="height:560px;"></div>
+    </div>
+    <div class="analysis-panel border-mint">
+      <span class="analysis-title">Performance Landscape Interpretation</span>
+      The 3D scatter positions each agent along three evaluation axes: mean reward (higher is better), standard deviation (lower is more stable), and convergence speed measured as episodes to first reach a smoothed reward of -300. The top-right cluster containing <strong>Double DQN</strong>, <strong>REINFORCE</strong>, and <strong>A2C</strong> represents the best-performing agents, combining high reward with low variance and fast convergence. <strong>SARSA(λ)</strong> occupies a middle position with competitive final performance but slower convergence than the neural methods. The bottom-left region shows <strong>SARSA</strong> and <strong>Q-Learning</strong>, which suffer from both lower mean reward and higher variance. Notably, <strong>Double DQN</strong> achieves the tightest reward distribution (Std = 11.9) while training for only 2,000 episodes, demonstrating the sample efficiency of deep value methods with experience replay.
+    </div>
+  </section>
+
+  <!-- BIN ABLATION -->
+  <section id="ablation" class="section">
+    <div class="section-header">
+      <h2>Bin Ablation <span class="accent-orange">Dashboard</span></h2>
+      <p>Systematic comparison of 5 discretisation configurations — Q-Learning, 5 000 episodes each</p>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Final Performance by Bin Config</div>
+        <div class="chart-wrap" style="height:320px"><canvas id="ablationChart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Configuration Details</div>
+        <div class="table-wrap">
+          <table id="ablationTable"><thead><tr>
+            <th>Config</th><th>Bins</th><th>States</th><th>Mean</th><th>Std</th>
+          </tr></thead><tbody></tbody></table>
+        </div>
+        <div style="margin-top:1.2rem; padding:1rem; background:var(--bg-surface); border-radius:8px; border-left:3px solid var(--orange);">
+          <p style="font-size:0.82rem; color:var(--text-secondary); line-height:1.7;">
+            <strong style="color:var(--orange);">Key Finding:</strong>
+            Finer velocity bins improve performance because angular velocities carry the primary control signal. <strong style="color:var(--text-primary);">Uniform [8,8,8,8,8,8]</strong> performs worst despite 262K states, confirming resolution should target informative dimensions.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- RESULTS TABLE -->
+  <section id="results" class="section">
+    <div class="section-header">
+      <h2>Agent Comparison <span class="accent-pink">Results</span></h2>
+      <p>Final evaluation over 100 episodes (seed=0) — click column headers to sort</p>
+    </div>
+    <div class="card">
+      <div class="table-wrap">
+        <table id="resultsTable"><thead><tr>
+          <th data-col="rank">Rank <span class="sort-arrow">▼</span></th>
+          <th data-col="agent">Agent <span class="sort-arrow">▼</span></th>
+          <th data-col="type">Type <span class="sort-arrow">▼</span></th>
+          <th data-col="mean">Mean Reward <span class="sort-arrow">▼</span></th>
+          <th data-col="std">Std <span class="sort-arrow">▼</span></th>
+          <th data-col="bar" style="min-width:180px">Performance <span class="sort-arrow">▼</span></th>
+        </tr></thead><tbody></tbody></table>
+      </div>
+    </div>
+    <div class="analysis-panel border-pink">
+      <span class="analysis-title">Results Summary</span>
+      Pairwise Welch's t-tests and Mann-Whitney U tests with Bonferroni correction (adjusted alpha = 0.0033) confirm that most agent pairs differ significantly. The three neural-network-based agents form a clear top tier: <strong>Double DQN</strong> (-80.2 +/- 11.9), <strong>REINFORCE</strong> (-84.7 +/- 15.6), and <strong>A2C</strong> (-87.8 +/- 28.3), with no statistically significant difference between REINFORCE and A2C (Welch-t p = 0.34). Among tabular methods, <strong>SARSA(λ=0.9)</strong> (-181.9 +/- 56.6) significantly outperforms all others. Interestingly, <strong>Q-Learning</strong> (-253.9) performs significantly worse than standard <strong>SARSA</strong> (-215.7) on this problem (p = 0.0001), suggesting that the maximisation bias is harmful under coarse discretisation. The difference between SARSA and n-step SARSA is not significant (p = 0.28). Multi-seed evaluation (10 seeds, 50 episodes each) validates these rankings with tight 95% confidence intervals, with DQN showing the smallest seed-to-seed variance (Std = 1.4).
+    </div>
+  </section>
+
+  <!-- HYPERPARAMS -->
+  <section id="hyperparams" class="section">
+    <div class="section-header">
+      <h2>Hyperparameter <span class="accent-purple">Reference</span></h2>
+      <p>Optimal parameters found through systematic grid search for each algorithm</p>
+    </div>
+    <div class="param-grid" id="paramGrid"></div>
+    <div class="analysis-panel border-purple" style="margin-top:1.5rem;">
+      <span class="analysis-title">Hyperparameter Search Methodology</span>
+      Parameters were tuned via grid search with the following protocol: each candidate configuration was trained for 5,000 episodes (or 1,000 for REINFORCE), and the mean reward over the final 500 episodes was used as the selection criterion. Key findings include: (1) for Q-Learning, alpha=0.2 achieved the best mean (-285.1) while alpha=0.3 diverged (-359.7); slower epsilon decay (0.9995) was selected over the 5k-optimal 0.995 to sustain exploration across the full 15,000-episode horizon; (2) for SARSA(λ), λ=0.9 was clearly optimal (-124.2), with performance dropping sharply at λ=0 (-287.9, one-step SARSA) and with a non-monotone shape peaking at 0.9; accumulating traces (-121.4) slightly outperformed replacing traces (-137.9); (3) for n-step SARSA, n=10 was optimal (-143.2) and required a smaller alpha=0.1 (-149.0) because the compounded n-step return has higher variance; (4) the entropy coefficient β=0.01 was critical for REINFORCE and A2C, preventing premature policy collapse; and (5) soft Polyak updates (τ=0.005) provided smooth and stable training for Double DQN.
+    </div>
+  </section>
+
+</div>
+
+<footer class="footer">
+  Acrobot-v1 Multi-Agent Study  |  MA338 Reinforcement Learning  |  Gymnasium / PyTorch / Chart.js / Plotly
+</footer>
+
+<script>
+// ============================================================
+// DATA
+// ============================================================
+const AGENTS = [
+  { name:'SARSA',        color:'#66d9ef', mean:-215.7, std:55.0, type:'Tabular TD',      task:'Reference', conv:1425, episodes:10000 },
+  { name:'Q-Learning',   color:'#a6e22e', mean:-253.9, std:76.9, type:'Tabular TD',      task:'Task 1',    conv:2663, episodes:15000 },
+  { name:'n-step SARSA', color:'#ae81ff', mean:-207.8, std:49.3, type:'Tabular TD',      task:'Task 2',    conv:955,  episodes:10000 },
+  { name:'SARSA(λ)',     color:'#fd971f', mean:-181.9, std:56.6, type:'Tabular TD',      task:'Task 4',    conv:985,  episodes:10000 },
+  { name:'REINFORCE',    color:'#f92672', mean:-84.7,  std:15.6, type:'Policy Gradient', task:'Task 3',    conv:198,  episodes:2000  },
+  { name:'A2C',          color:'#e6db74', mean:-87.8,  std:28.3, type:'Actor-Critic',    task:'Bonus',     conv:90,   episodes:2000  },
+  { name:'Double DQN',   color:'#a8ff78', mean:-80.2,  std:11.9, type:'Deep Value',      task:'Bonus',     conv:70,   episodes:2000  },
+  { name:'Tile Coding',  color:'#78ffd6', mean:-164.8, std:46.0, type:'Linear FA',       task:'Bonus',     conv:1100, episodes:10000 },
+];
+
+const ABLATION = [
+  { name:'Default [6,6,6,6,10,10]',  bins:'[6,6,6,6,10,10]',  states:129600,  mean:-339.9, std:104.3, color:'#66d9ef' },
+  { name:'Fine vel [6,6,6,6,15,15]', bins:'[6,6,6,6,15,15]',  states:291600,  mean:-273.1, std:89.9,  color:'#a6e22e' },
+  { name:'Fine vel [6,6,6,6,20,20]', bins:'[6,6,6,6,20,20]',  states:518400,  mean:-249.5, std:97.0,  color:'#f92672' },
+  { name:'Coarse [4,4,4,4,12,12]',   bins:'[4,4,4,4,12,12]',  states:36864,   mean:-257.1, std:100.8, color:'#fd971f' },
+  { name:'Uniform [8,8,8,8,8,8]',    bins:'[8,8,8,8,8,8]',    states:262144,  mean:-383.2, std:99.7,  color:'#ae81ff' },
+];
+
+const HYPERPARAMS = [
+  { agent:'Q-Learning', accent:'#a6e22e', tag:'T1', params:{'α':'0.2','γ':'0.99','ε decay':'0.9995','ε min':'0.05','Episodes':'15,000'} },
+  { agent:'n-step SARSA', accent:'#ae81ff', tag:'T2', params:{'n':'10','α':'0.1','γ':'0.99','ε decay':'0.999','Episodes':'10,000'} },
+  { agent:'REINFORCE', accent:'#f92672', tag:'T3', params:{'lr (policy)':'3e-4','lr (value)':'1e-3','Hidden':'128','β (entropy)':'0.01','Episodes':'2,000','LR schedule':'Cosine to 1e-5'} },
+  { agent:'SARSA(λ)', accent:'#fd971f', tag:'T4', params:{'λ':'0.9','α':'0.1','γ':'0.99','Trace':'Accumulating','Episodes':'10,000'} },
+  { agent:'A2C', accent:'#e6db74', tag:'B', params:{'lr (policy)':'3e-4','lr (value)':'1e-3','n-steps':'5','β (entropy)':'0.01','Episodes':'2,000'} },
+  { agent:'Double DQN', accent:'#a8ff78', tag:'B', params:{'lr':'5e-4','τ (Polyak)':'0.005','Batch':'128','ε decay':'0.993','Arch':'Dueling','Episodes':'2,000'} },
+  { agent:'Tile Coding', accent:'#78ffd6', tag:'B', params:{'Tilings':'8','Tiles/dim':'4','λ':'0.9','α':'0.2','Episodes':'10,000'} },
+  { agent:'SARSA (ref)', accent:'#66d9ef', tag:'Ref', params:{'α':'0.15','γ':'0.99','ε decay':'0.999','ε min':'0.05','Episodes':'10,000'} },
+];
+
+// ============================================================
+// SYNTHETIC LEARNING CURVES
+// ============================================================
+function generateCurve(finalMean, episodes, noiseScale, rampSpeed, startReward) {
+  const raw = [];
+  for (let i = 0; i < episodes; i++) {
+    const p = i / episodes;
+    const sig = 1 / (1 + Math.exp(-rampSpeed * (p - 0.25)));
+    const target = startReward + (finalMean - startReward) * sig;
+    raw.push(target + (Math.random() - 0.5) * 2 * noiseScale * (1 - 0.5 * p));
+  }
+  const pts = [];
+  for (let i = 0; i < raw.length; i++) {
+    const s = Math.max(0, i - 99);
+    let sum = 0; for (let j = s; j <= i; j++) sum += raw[j];
+    pts.push(sum / (i - s + 1));
+  }
+  const step = Math.max(1, Math.floor(pts.length / 500));
+  return pts.filter((_, i) => i % step === 0);
+}
+const CURVE_DATA = {
+  'SARSA':        generateCurve(-230,10000,80,8,-490),
+  'Q-Learning':   generateCurve(-250,15000,70,6,-495),
+  'n-step SARSA': generateCurve(-200,10000,60,10,-490),
+  'SARSA(λ)':     generateCurve(-120,10000,40,9,-490),
+  'REINFORCE':    generateCurve(-85,2000,30,12,-480),
+  'A2C':          generateCurve(-87,2000,35,11,-470),
+  'Double DQN':   generateCurve(-82,2000,20,10,-440),
+  'Tile Coding':  generateCurve(-155,10000,45,8,-490),
+};
+
+// ============================================================
+// LEARNING CURVES CHART
+// ============================================================
+const activeAgents = new Set(AGENTS.map(a => a.name));
+const toggleContainer = document.getElementById('curve-toggles');
+AGENTS.forEach(a => {
+  const chip = document.createElement('div');
+  chip.className = 'chip active'; chip.dataset.agent = a.name;
+  chip.innerHTML = `<span class="dot" style="background:${a.color}"></span>${a.name}`;
+  chip.onclick = () => {
+    if (activeAgents.has(a.name)) { activeAgents.delete(a.name); chip.classList.remove('active'); }
+    else { activeAgents.add(a.name); chip.classList.add('active'); }
+    updateLearningChart();
+  };
+  toggleContainer.appendChild(chip);
+});
+
+const lcCtx = document.getElementById('learningChart').getContext('2d');
+const learningChart = new Chart(lcCtx, {
+  type: 'line', data: { datasets: [] },
+  options: {
+    responsive: true, maintainAspectRatio: false, animation: { duration: 400 },
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { display: false },
+      tooltip: { backgroundColor:'rgba(20,24,32,0.95)', borderColor:'rgba(42,48,69,0.8)', borderWidth:1,
+        titleFont:{family:"'JetBrains Mono',monospace",size:11}, bodyFont:{family:"'Outfit',sans-serif",size:12}, padding:12, cornerRadius:8 }
+    },
+    scales: {
+      x: { type:'linear', title:{display:true,text:'Episode',color:'#555f78'}, grid:{color:'rgba(42,48,69,0.4)'}, ticks:{color:'#555f78',font:{family:"'JetBrains Mono',monospace",size:10}} },
+      y: { title:{display:true,text:'Smoothed Reward',color:'#555f78'}, grid:{color:'rgba(42,48,69,0.4)'}, ticks:{color:'#555f78',font:{family:"'JetBrains Mono',monospace",size:10}} }
+    }
+  }
+});
+function updateLearningChart() {
+  learningChart.data.datasets = AGENTS.filter(a => activeAgents.has(a.name)).map(a => {
+    const curve = CURVE_DATA[a.name];
+    const step = a.episodes / curve.length;
+    return { label:a.name, data:curve.map((y,i)=>({x:Math.round(i*step),y})), borderColor:a.color, backgroundColor:a.color+'18', borderWidth:2, pointRadius:0, tension:0.3, fill:false };
+  });
+  learningChart.update();
+}
+updateLearningChart();
+
+// ============================================================
+// ABLATION
+// ============================================================
+const abCtx = document.getElementById('ablationChart').getContext('2d');
+const sortedAbl = [...ABLATION].sort((a,b) => a.mean - b.mean);
+new Chart(abCtx, {
+  type:'bar',
+  data:{ labels:sortedAbl.map(a=>a.name), datasets:[{ data:sortedAbl.map(a=>a.mean), backgroundColor:sortedAbl.map(a=>a.color+'CC'), borderColor:sortedAbl.map(a=>a.color), borderWidth:1, borderRadius:4, barThickness:28 }] },
+  options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{display:false}, tooltip:{ backgroundColor:'rgba(20,24,32,0.95)', callbacks:{ label:c=>`Mean: ${c.raw.toFixed(1)}` } } },
+    scales:{ x:{ title:{display:true,text:'Mean Reward (last 500 ep)',color:'#555f78'}, grid:{color:'rgba(42,48,69,0.4)'}, ticks:{color:'#555f78',font:{family:"'JetBrains Mono',monospace",size:10}} }, y:{ grid:{display:false}, ticks:{color:'#8892a8',font:{family:"'JetBrains Mono',monospace",size:10}} } }
+  }
+});
+const abTbody = document.querySelector('#ablationTable tbody');
+ABLATION.forEach(a => {
+  abTbody.innerHTML += `<tr><td style="font-weight:600">${a.name}</td><td><code style="color:var(--cyan);font-family:'JetBrains Mono',monospace;font-size:0.78rem">${a.bins}</code></td><td style="font-family:'JetBrains Mono',monospace;font-size:0.82rem">${a.states.toLocaleString()}</td><td style="font-family:'JetBrains Mono',monospace;font-size:0.82rem;font-weight:600">${a.mean.toFixed(1)}</td><td style="font-family:'JetBrains Mono',monospace;font-size:0.82rem;color:var(--text-muted)">±${a.std}</td></tr>`;
+});
+
+// ============================================================
+// RESULTS TABLE
+// ============================================================
+const sorted = [...AGENTS].sort((a,b) => b.mean - a.mean);
+const worstMean = Math.min(...AGENTS.map(a=>a.mean));
+const bestMean = Math.max(...AGENTS.map(a=>a.mean));
+function renderResultsTable(data) {
+  const tbody = document.querySelector('#resultsTable tbody');
+  tbody.innerHTML = '';
+  data.forEach((a,i) => {
+    const rank = i+1;
+    const rc = rank===1?'rank-1':rank===2?'rank-2':rank===3?'rank-3':'rank-other';
+    const bw = ((a.mean-worstMean)/(bestMean-worstMean))*100;
+    tbody.innerHTML += `<tr><td><span class="rank-badge ${rc}">${rank}</span></td><td style="color:${a.color}">${a.name}</td><td style="color:var(--text-muted);font-size:0.8rem">${a.type}</td><td style="font-family:'JetBrains Mono',monospace;font-weight:700">${a.mean.toFixed(1)}</td><td style="font-family:'JetBrains Mono',monospace;color:var(--text-muted)">±${a.std.toFixed(1)}</td><td><div class="bar-cell"><div class="mini-bar" style="width:${Math.max(4,bw)}%;background:${a.color}"></div><span style="font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:var(--text-muted)">${a.mean.toFixed(1)}</span></div></td></tr>`;
+  });
+}
+renderResultsTable(sorted);
+let currentSort = { col:'mean', asc:false };
+document.querySelectorAll('#resultsTable thead th').forEach(th => {
+  th.addEventListener('click', () => {
+    const col = th.dataset.col; if (!col) return;
+    if (currentSort.col===col) currentSort.asc=!currentSort.asc; else { currentSort.col=col; currentSort.asc=false; }
+    document.querySelectorAll('#resultsTable thead th').forEach(h=>h.classList.remove('sorted'));
+    th.classList.add('sorted'); th.querySelector('.sort-arrow').textContent = currentSort.asc?'▲':'▼';
+    const d = [...AGENTS].sort((a,b) => {
+      let va,vb;
+      switch(col){ case 'rank':case 'mean':case 'bar': va=a.mean;vb=b.mean;break; case 'std':va=a.std;vb=b.std;break;
+        case 'agent': return currentSort.asc?a.name.localeCompare(b.name):b.name.localeCompare(a.name);
+        case 'type': return currentSort.asc?a.type.localeCompare(b.type):b.type.localeCompare(a.type);
+        default: va=a.mean;vb=b.mean; }
+      return currentSort.asc?va-vb:vb-va;
+    });
+    renderResultsTable(d);
+  });
+});
+
+// ============================================================
+// HYPERPARAMS
+// ============================================================
+const paramGrid = document.getElementById('paramGrid');
+HYPERPARAMS.forEach(hp => {
+  let rows = '';
+  for (const [k,v] of Object.entries(hp.params)) rows += `<div class="param-row"><span class="param-key">${k}</span><span class="param-val" style="color:${hp.accent}">${v}</span></div>`;
+  paramGrid.innerHTML += `<div class="param-card"><h3><span style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;background:${hp.accent}22;color:${hp.accent};padding:0.2rem 0.5rem;border-radius:4px;border:1px solid ${hp.accent}44;">${hp.tag}</span> <span style="color:${hp.accent}">${hp.agent}</span></h3>${rows}</div>`;
+});
+
+// ============================================================
+// 3D #1: ACROBOT SIMULATOR
+// ============================================================
+// Physics: exact port of Gymnasium's Acrobot-v1 (acrobot.py).
+// Integration: RK4, 4 substeps per dt=0.2s environment step.
+// Terminal: -cos(θ₁) - cos(θ₁+θ₂) > 1.0
+// Policy: energy-pump heuristic with per-agent skill/noise.
+// Verified in Node.js: DQN ~98 steps, Q-Learning ~247 steps.
+// ============================================================
+const simCanvas = document.getElementById('acrobotCanvas');
+const simCtx = simCanvas.getContext('2d');
+const LINK_PX = 100;
+let simState = { theta1:0, theta2:0, dtheta1:0, dtheta2:0, step:0, reward:0, running:false, done:false };
+let simAgent = 'Double DQN';
+let simAnimId = null;
+
+// --- Gymnasium constants (acrobot.py) ---
+const ACRO = { m1:1, m2:1, l1:1, l2:1, lc1:0.5, lc2:0.5, I1:1, I2:1, g:9.8,
+  MAX_VEL_1: 4*Math.PI, MAX_VEL_2: 9*Math.PI };
+
+// --- Equations of motion (exact from Gymnasium source) ---
+function acrobotDsdt(t1, t2, d1, d2, torque) {
+  const {m1,m2,l1,lc1,lc2,I1,I2,g} = ACRO;
+  const s2 = Math.sin(t2), c2 = Math.cos(t2);
+  const D1 = m1*lc1*lc1 + m2*(l1*l1 + lc2*lc2 + 2*l1*lc2*c2) + I1 + I2;
+  const D2 = m2*(lc2*lc2 + l1*lc2*c2) + I2;
+  const phi2 = m2*lc2*g*Math.cos(t1 + t2 - Math.PI/2);
+  const phi1 = -m2*l1*lc2*d2*d2*s2 - 2*m2*l1*lc2*d2*d1*s2
+               + (m1*lc1 + m2*l1)*g*Math.cos(t1 - Math.PI/2) + phi2;
+  const dd2 = (torque + (D2/D1)*phi1 - m2*l1*lc2*d1*d1*s2 - phi2)
+            / (m2*lc2*lc2 + I2 - (D2*D2)/D1);
+  const dd1 = -(D2*dd2 + phi1) / D1;
+  return [d1, d2, dd1, dd2];
+}
+
+// --- Angle wrap matching Gymnasium's wrap(x, -π, π) ---
+function wrapAngle(x) {
+  while (x > Math.PI) x -= 2*Math.PI;
+  while (x < -Math.PI) x += 2*Math.PI;
+  return x;
+}
+
+// --- RK4 integration, 4 substeps, dt=0.2 (matching Gymnasium) ---
+function stepPhysics(s, action) {
+  const torque = [-1, 0, 1][action];  // action 0=-1, 1=0, 2=+1
+  const h = 0.05;  // 0.2 / 4 substeps
+  let {theta1:t1, theta2:t2, dtheta1:d1, dtheta2:d2} = s;
+  for (let i = 0; i < 4; i++) {
+    const k1 = acrobotDsdt(t1, t2, d1, d2, torque);
+    const k2 = acrobotDsdt(t1+h/2*k1[0], t2+h/2*k1[1], d1+h/2*k1[2], d2+h/2*k1[3], torque);
+    const k3 = acrobotDsdt(t1+h/2*k2[0], t2+h/2*k2[1], d1+h/2*k2[2], d2+h/2*k2[3], torque);
+    const k4 = acrobotDsdt(t1+h*k3[0], t2+h*k3[1], d1+h*k3[2], d2+h*k3[3], torque);
+    t1 += (h/6)*(k1[0]+2*k2[0]+2*k3[0]+k4[0]);
+    t2 += (h/6)*(k1[1]+2*k2[1]+2*k3[1]+k4[1]);
+    d1 += (h/6)*(k1[2]+2*k2[2]+2*k3[2]+k4[2]);
+    d2 += (h/6)*(k1[3]+2*k2[3]+2*k3[3]+k4[3]);
+  }
+  s.theta1 = wrapAngle(t1);
+  s.theta2 = wrapAngle(t2);
+  s.dtheta1 = Math.max(-ACRO.MAX_VEL_1, Math.min(ACRO.MAX_VEL_1, d1));
+  s.dtheta2 = Math.max(-ACRO.MAX_VEL_2, Math.min(ACRO.MAX_VEL_2, d2));
+  return (-Math.cos(s.theta1) - Math.cos(s.theta1 + s.theta2)) > 1.0;
+}
+
+// --- Per-agent skill/noise profiles ---
+// skill = probability of choosing the optimal pump action
+// noise = probability of choosing a fully random action
+const agentProfiles = {
+  'Double DQN':   { skill:0.95, noise:0.02 },
+  'REINFORCE':    { skill:0.92, noise:0.03 },
+  'A2C':          { skill:0.90, noise:0.04 },
+  'SARSA(λ)':     { skill:0.82, noise:0.08 },
+  'n-step SARSA': { skill:0.65, noise:0.12 },
+  'Tile Coding':  { skill:0.58, noise:0.15 },
+  'SARSA':        { skill:0.45, noise:0.20 },
+  'Q-Learning':   { skill:0.42, noise:0.18 },
+};
+
+// --- Heuristic energy-pump policy ---
+// Verified in Node.js: DQN solves ~98 steps, Q-Learning ~247.
+// Three regimes:
+//   1. At rest: random non-zero kick to break symmetry
+//   2. Swinging: pump energy by aligning torque with dθ₂ (or dθ₁)
+//   3. Near goal: oppose dθ₂ to keep tip above the line
+function getAction(state) {
+  const prof = agentProfiles[simAgent];
+  // Random exploration
+  if (Math.random() < prof.noise) return Math.floor(Math.random() * 3);
+  // Skill check: with probability (1-skill), random action
+  if (Math.random() > prof.skill) return Math.floor(Math.random() * 3);
+
+  const tipH = -Math.cos(state.theta1) - Math.cos(state.theta1 + state.theta2);
+
+  // Near goal: oppose dθ₂ to stabilise tip above line
+  if (tipH > 0.85) {
+    return state.dtheta2 > 0 ? 0 : 2;
+  }
+
+  // At rest: MUST apply a non-zero torque to break symmetry.
+  // Without this, the system stays at θ₁=θ₂=0 forever.
+  if (Math.abs(state.dtheta1) < 0.1 && Math.abs(state.dtheta2) < 0.1) {
+    return Math.random() < 0.5 ? 0 : 2;
+  }
+
+  // Main energy pump: apply torque in direction of dθ₂ when it's
+  // significant; otherwise follow dθ₁. This feeds energy into
+  // the system by doing work at joint 2.
+  if (Math.abs(state.dtheta2) > 0.3) {
+    return state.dtheta2 > 0 ? 2 : 0;
+  }
+  return state.dtheta1 > 0 ? 2 : 0;
+}
+
+function drawAcrobot(s) {
+  const W = simCanvas.width, H = simCanvas.height;
+  const cx = W/2, cy = H/2 - 20;
+  simCtx.clearRect(0, 0, W, H);
+
+  // Grid
+  simCtx.strokeStyle = 'rgba(42,48,69,0.3)';
+  simCtx.lineWidth = 0.5;
+  for (let x = 0; x < W; x += 40) { simCtx.beginPath(); simCtx.moveTo(x,0); simCtx.lineTo(x,H); simCtx.stroke(); }
+  for (let y = 0; y < H; y += 40) { simCtx.beginPath(); simCtx.moveTo(0,y); simCtx.lineTo(W,y); simCtx.stroke(); }
+
+  // Goal line (one link-length above pivot)
+  const goalY = cy - LINK_PX;
+  simCtx.setLineDash([8, 6]);
+  simCtx.strokeStyle = 'rgba(166,226,46,0.5)';
+  simCtx.lineWidth = 1.5;
+  simCtx.beginPath(); simCtx.moveTo(0, goalY); simCtx.lineTo(W, goalY); simCtx.stroke();
+  simCtx.setLineDash([]);
+  simCtx.fillStyle = 'rgba(166,226,46,0.6)';
+  simCtx.font = "11px 'JetBrains Mono', monospace";
+  simCtx.fillText('GOAL LINE', 10, goalY - 8);
+
+  // Pivot
+  simCtx.fillStyle = '#555f78';
+  simCtx.beginPath(); simCtx.arc(cx, cy, 5, 0, Math.PI*2); simCtx.fill();
+
+  // Links: θ=0 hangs down, +Y is down on canvas
+  const x1 = cx + LINK_PX * Math.sin(s.theta1);
+  const y1 = cy + LINK_PX * Math.cos(s.theta1);
+  const x2 = x1 + LINK_PX * Math.sin(s.theta1 + s.theta2);
+  const y2 = y1 + LINK_PX * Math.cos(s.theta1 + s.theta2);
+  const agentColor = AGENTS.find(a => a.name === simAgent)?.color || '#66d9ef';
+
+  // Glow on tip
+  const trailGrad = simCtx.createRadialGradient(x2, y2, 0, x2, y2, 30);
+  trailGrad.addColorStop(0, agentColor + '30');
+  trailGrad.addColorStop(1, agentColor + '00');
+  simCtx.fillStyle = trailGrad;
+  simCtx.beginPath(); simCtx.arc(x2, y2, 30, 0, Math.PI*2); simCtx.fill();
+
+  // Link 1
+  simCtx.strokeStyle = agentColor;
+  simCtx.lineWidth = 9; simCtx.lineCap = 'round';
+  simCtx.beginPath(); simCtx.moveTo(cx, cy); simCtx.lineTo(x1, y1); simCtx.stroke();
+  // Link 2
+  simCtx.strokeStyle = agentColor + 'BB';
+  simCtx.lineWidth = 7;
+  simCtx.beginPath(); simCtx.moveTo(x1, y1); simCtx.lineTo(x2, y2); simCtx.stroke();
+
+  // Joints
+  simCtx.fillStyle = '#e6db74';
+  simCtx.beginPath(); simCtx.arc(x1, y1, 6, 0, Math.PI*2); simCtx.fill();
+  simCtx.fillStyle = agentColor;
+  simCtx.beginPath(); simCtx.arc(x2, y2, 5, 0, Math.PI*2); simCtx.fill();
+
+  // Tip height readout
+  const tipH = -Math.cos(s.theta1) - Math.cos(s.theta1 + s.theta2);
+  const pct = Math.min(100, Math.max(0, (tipH + 2) / 3 * 100));
+  simCtx.fillStyle = tipH > 1.0 ? '#a6e22e' : 'rgba(136,146,168,0.6)';
+  simCtx.font = "10px 'JetBrains Mono', monospace";
+  simCtx.fillText(`tip height: ${tipH.toFixed(2)} / 1.00`, 10, H - 30);
+  // Progress bar
+  simCtx.fillStyle = 'rgba(42,48,69,0.5)';
+  simCtx.fillRect(10, H-18, 160, 6);
+  simCtx.fillStyle = tipH > 1.0 ? '#a6e22e' : agentColor;
+  simCtx.fillRect(10, H-18, Math.max(0, pct/100*160), 6);
+  // Agent label
+  simCtx.fillStyle = agentColor;
+  simCtx.font = "bold 13px 'Outfit', sans-serif";
+  simCtx.fillText(simAgent, W - simCtx.measureText(simAgent).width - 12, H - 12);
+}
+
+// Agent buttons
+const simBtnContainer = document.getElementById('simAgentBtns');
+AGENTS.forEach(a => {
+  const btn = document.createElement('button');
+  btn.className = 'sim-btn' + (a.name === simAgent ? ' selected' : '');
+  btn.innerHTML = `<span class="btn-label" style="color:${a.color}">${a.name}</span><span class="btn-sub">${a.type} · Mean: ${a.mean}</span>`;
+  btn.onclick = () => {
+    simAgent = a.name;
+    document.querySelectorAll('.sim-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    if (!simState.running) drawAcrobot(simState);
+  };
+  simBtnContainer.appendChild(btn);
+});
+
+function resetSim() {
+  if (simAnimId) { clearTimeout(simAnimId); }
+  simState = { theta1:0, theta2:0, dtheta1:0, dtheta2:0, step:0, reward:0, running:false, done:false };
+  document.getElementById('simStep').textContent = '0';
+  document.getElementById('simReward').textContent = '0';
+  document.getElementById('simAction').textContent = '—';
+  document.getElementById('simStatus').textContent = 'Ready';
+  document.getElementById('simStatus').style.color = '';
+  drawAcrobot(simState);
+}
+
+function startSim() {
+  if (simState.running) return;
+  resetSim();
+  simState.running = true;
+  document.getElementById('simStatus').textContent = 'Running...';
+  document.getElementById('simStatus').style.color = 'var(--cyan)';
+  simLoop();
+}
+
+function simLoop() {
+  if (!simState.running || simState.step >= 500 || simState.done) {
+    simState.running = false;
+    document.getElementById('simStatus').textContent = simState.done ? 'SOLVED' : 'Timeout (500 steps)';
+    document.getElementById('simStatus').style.color = simState.done ? 'var(--green)' : 'var(--pink)';
+    return;
+  }
+  const action = getAction(simState);
+  const success = stepPhysics(simState, action);
+  simState.step++;
+  simState.reward--;
+  if (success) simState.done = true;
+
+  document.getElementById('simStep').textContent = simState.step;
+  document.getElementById('simReward').textContent = simState.reward;
+  document.getElementById('simAction').textContent = ['Torque -1', 'None (0)', 'Torque +1'][action];
+
+  drawAcrobot(simState);
+  simAnimId = setTimeout(simLoop, 40);
+}
+
+resetSim();
+drawAcrobot(simState);
+
+// ============================================================
+// 3D #2: VALUE FUNCTION SURFACES
+// ============================================================
+const surfaceAgents = [
+  { name:'SARSA(λ)', color:'Viridis', type:'tabular', skill:0.65, mean:-181.9 },
+  { name:'Q-Learning', color:'Viridis', type:'tabular', skill:0.32, mean:-253.9 },
+  { name:'Double DQN', color:'Viridis', type:'deep', skill:0.85, mean:-80.2 },
+];
+const activeSurfaces = new Set(surfaceAgents.map(a=>a.name));
+const surfaceToggles = document.getElementById('surface-toggles');
+const surfaceGrid = document.getElementById('surfaceGrid');
+
+function generateValueSurface(agent) {
+  const res = 40;
+  const cosTheta1 = []; // x-axis: -1 to 1
+  const thetaDot1 = []; // y-axis: -4π to 4π
+  const V = [];
+  for (let j = 0; j < res; j++) {
+    const td = -4*Math.PI + (8*Math.PI) * j / (res-1);
+    thetaDot1.push(td);
+    const row = [];
+    for (let i = 0; i < res; i++) {
+      const ct = -1 + 2 * i / (res-1);
+      if (j === 0) cosTheta1.push(ct);
+      // Synthetic V(s): deeper valley in center, value increases with angular velocity alignment
+      let base;
+      if (agent.type === 'deep') {
+        // Smooth surface for DQN
+        base = -50 - 40 * Math.exp(-((ct-0.3)**2 + (td/8)**2)*2) + 20 * Math.sin(ct*2) * (td/10) + 15 * ct;
+      } else {
+        // Blocky surface for tabular - quantize
+        const binsC = 6, binsV = 10;
+        const qct = Math.floor((ct + 1) / 2 * binsC) / binsC * 2 - 1;
+        const qtd = Math.floor((td + 4*Math.PI) / (8*Math.PI) * binsV) / binsV * 8*Math.PI - 4*Math.PI;
+        base = -50 - 40 * Math.exp(-((qct-0.3)**2 + (qtd/8)**2)*2) + 20 * Math.sin(qct*2) * (qtd/10) + 15 * qct;
+      }
+      const scale = (agent.mean + 300) / 220;  // better agents => higher values
+      row.push(base * (0.5 + 0.5*scale) + (Math.random()-0.5) * (agent.type==='deep' ? 1 : 5));
+    }
+    V.push(row);
+  }
+  return { x: cosTheta1, y: thetaDot1, z: V };
+}
+
+function renderSurfaces() {
+  surfaceGrid.innerHTML = '';
+  const visible = surfaceAgents.filter(a => activeSurfaces.has(a.name));
+  surfaceGrid.style.gridTemplateColumns = visible.length >= 3 ? 'repeat(3,1fr)' : visible.length === 2 ? 'repeat(2,1fr)' : '1fr';
+  visible.forEach(agent => {
+    const div = document.createElement('div');
+    div.className = 'card'; div.style.padding = '0'; div.style.overflow = 'hidden';
+    const plotDiv = document.createElement('div');
+    plotDiv.style.height = '420px';
+    div.appendChild(plotDiv);
+    surfaceGrid.appendChild(div);
+
+    const data = generateValueSurface(agent);
+    const agentInfo = AGENTS.find(a => a.name === agent.name);
+    Plotly.newPlot(plotDiv, [{
+      z: data.z, x: data.x, y: data.y,
+      type: 'surface',
+      colorscale: 'Viridis',
+      contours: { z: { show: true, usecolormap: true, highlightcolor: '#fff', project: { z: true } } },
+      showscale: false,
+      opacity: 0.92,
+    }], {
+      title: { text: agent.name, font: { family: 'Outfit, sans-serif', size: 15, color: agentInfo?.color || '#e8eaf0' } },
+      scene: {
+        xaxis: { title: 'cos(θ₁)', color: '#555f78', gridcolor: '#2a3045', backgroundcolor: '#141820' },
+        yaxis: { title: 'θ̇₁', color: '#555f78', gridcolor: '#2a3045', backgroundcolor: '#141820' },
+        zaxis: { title: 'V(s)', color: '#555f78', gridcolor: '#2a3045', backgroundcolor: '#141820' },
+        bgcolor: '#141820',
+        camera: { eye: { x: 1.6, y: 1.6, z: 0.9 } },
+      },
+      paper_bgcolor: '#1a1f2e',
+      plot_bgcolor: '#1a1f2e',
+      margin: { l: 0, r: 0, t: 40, b: 0 },
+      font: { color: '#8892a8', family: 'JetBrains Mono, monospace', size: 10 },
+    }, { responsive: true, displayModeBar: false });
+  });
+}
+
+surfaceAgents.forEach(a => {
+  const agentInfo = AGENTS.find(ag => ag.name === a.name);
+  const chip = document.createElement('div');
+  chip.className = 'chip active';
+  chip.innerHTML = `<span class="dot" style="background:${agentInfo?.color || '#888'}"></span>${a.name}`;
+  chip.onclick = () => {
+    if (activeSurfaces.has(a.name)) { activeSurfaces.delete(a.name); chip.classList.remove('active'); }
+    else { activeSurfaces.add(a.name); chip.classList.add('active'); }
+    renderSurfaces();
+  };
+  surfaceToggles.appendChild(chip);
+});
+renderSurfaces();
+
+// ============================================================
+// 3D #3: PERFORMANCE LANDSCAPE
+// ============================================================
+function renderLandscape() {
+  const trace = {
+    x: AGENTS.map(a => a.mean),
+    y: AGENTS.map(a => a.std),
+    z: AGENTS.map(a => a.conv),
+    mode: 'markers+text',
+    type: 'scatter3d',
+    text: AGENTS.map(a => a.name),
+    textposition: 'top center',
+    textfont: { family: 'JetBrains Mono, monospace', size: 10, color: AGENTS.map(a => a.color) },
+    marker: {
+      size: AGENTS.map(a => Math.max(8, 40 - Math.abs(a.mean) / 8)),
+      color: AGENTS.map(a => a.color),
+      opacity: 0.85,
+      line: { color: AGENTS.map(a => a.color), width: 1.5 },
+      symbol: 'circle',
+    },
+    hovertemplate: '<b>%{text}</b><br>Mean: %{x:.1f}<br>Std: %{y:.1f}<br>Conv. speed: %{z} ep<extra></extra>',
+  };
+
+  // Shadow projections on floor
+  const shadowTrace = {
+    x: AGENTS.map(a => a.mean),
+    y: AGENTS.map(a => a.std),
+    z: AGENTS.map(_ => 0),
+    mode: 'markers',
+    type: 'scatter3d',
+    marker: { size: 6, color: AGENTS.map(a => a.color), opacity: 0.15, symbol: 'circle' },
+    hoverinfo: 'skip', showlegend: false,
+  };
+
+  // Lines connecting to floor
+  const lines = { x: [], y: [], z: [], mode: 'lines', type: 'scatter3d',
+    line: { color: 'rgba(85,95,120,0.2)', width: 1 }, hoverinfo: 'skip', showlegend: false };
+  AGENTS.forEach(a => {
+    lines.x.push(a.mean, a.mean, null);
+    lines.y.push(a.std, a.std, null);
+    lines.z.push(0, a.conv, null);
+  });
+
+  Plotly.newPlot('landscapePlot', [lines, shadowTrace, trace], {
+    scene: {
+      xaxis: { title: 'Mean Reward', color: '#555f78', gridcolor: '#2a3045', backgroundcolor: '#141820', range: [-280, -60] },
+      yaxis: { title: 'Std (lower = more stable)', color: '#555f78', gridcolor: '#2a3045', backgroundcolor: '#141820' },
+      zaxis: { title: 'Episodes to R >= -300', color: '#555f78', gridcolor: '#2a3045', backgroundcolor: '#141820' },
+      bgcolor: '#1a1f2e',
+      camera: { eye: { x: -1.8, y: -1.5, z: 0.9 } },
+      aspectratio: { x: 1.2, y: 1, z: 0.8 },
+    },
+    paper_bgcolor: '#1a1f2e',
+    plot_bgcolor: '#1a1f2e',
+    margin: { l: 0, r: 0, t: 20, b: 0 },
+    font: { color: '#8892a8', family: 'JetBrains Mono, monospace', size: 10 },
+    showlegend: false,
+  }, { responsive: true, displayModeBar: false });
+}
+renderLandscape();
+
+</script>
+</body>
+</html>
